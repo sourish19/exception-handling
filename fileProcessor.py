@@ -1,52 +1,133 @@
 import tempfile
 from io import TextIOWrapper, _WrappedBuffer
-from tempfile import _TemporaryFileWrapper
-
 
 class FileProcessingError(Exception):
-    pass
+  pass
 
 class ValidationError(FileProcessingError):
-    pass
+  pass
 
 class EncodingError(FileProcessingError):
-    pass
+  pass
 
 class IOError_Custom(FileProcessingError):
-    pass
+  pass
 
 
 class FileProcessor:
   input_file_name:str
   output_file_name: str
-  input_file:None |  TextIOWrapper[_WrappedBuffer]
-  output_file: None | TextIOWrapper[_WrappedBuffer]
-  temporaryFile: None | _TemporaryFileWrapper[str]
-  errors: list[str]
+  errors: list[dict[str,str|int]]
+  _valid_lines:  list[str]
+  _input_file:None |  TextIOWrapper[_WrappedBuffer]
+  _output_file: None | TextIOWrapper[_WrappedBuffer]
+  _lines: list[str]
+  _input_encoding: str
+  _output_encoding: str
+  _lines_processed: int
 
-  def __init__(self,input_file:str,output_file:str):
-    self.input_file_name = input_file
-    self.output_file_name = output_file
-    self.input_file = None
-    self.output_file = None
-    self.temporaryFile = None
+  def __init__(self,_input_file:str,_output_file:str):
+    self.input_file_name = _input_file
+    self.output_file_name = _output_file
+    self._input_file = None
+    self._output_file = None
+    self._lines = []
+    self._input_encoding = "utf-8"
+    self._output_encoding = "utf-8"
     self.errors = []
+    self._lines_processed = 0
+    self._valid_lines = []
 
   def __enter__(self):
     """Set up resources"""
     try:
-      self.input_file = open(self.input_file_name,"r",encoding="UTF-8")
-      self.output_file = open(self.output_file_name,"w",encoding="UTF-8")
-      self.temporaryFile = tempfile.NamedTemporaryFile(mode="w",delete=True)
+      self._input_file = open(self.input_file_name,"r",encoding=self._input_encoding)
+      self._output_file = open(self.output_file_name,"w",encoding=self._output_encoding)
       return self
     except FileNotFoundError:
       raise FileProcessingError(f"Input file not found: {self.input_file_name}")
+    except PermissionError:
+      if self._input_file is None:
+        raise FileProcessingError(f"Permission denied for {self.input_file_name}")
+      else:
+        raise FileProcessingError(f"Permission denied for {self.output_file_name}")
 
   def process(self):
-    print("process")
+    try:
+      if self._input_file:
+        self._lines = self._input_file.read().splitlines()
+
+      if self._lines:
+        self.validate(self._lines)
+
+      if self._output_file:
+        _ = self._output_file.write("\n".join(self._lines))
+
+      return {
+        'success': True,
+        'lines_processed': self._lines_processed,
+        'errors': self.errors,
+        'reason': ""
+      }
+
+    except UnicodeDecodeError:
+      if self._input_encoding == "latin-1":
+        self.errors.append({
+            "file": self.input_file_name,
+            "error": "Unable to decode file with supported encodings"
+        })
+        raise EncodingError("Unable to decode file with supported encodings")
+      else:
+        self._input_encoding = "utf-8"
+        self._input_file.close() if self._input_file else None
+        self._input_file = open(self.input_file_name,"r",encoding=self._input_encoding)
+        _ = self.process()
+
+    except UnicodeEncodeError:
+      if self._output_encoding == "latin-1":
+        self.errors.append({
+            "file": self.output_file_name,
+            "error": "Unable to encode file with supported encodings"
+        })
+        raise EncodingError("Unable to decode file with supported encodings")
+      else:
+        self._output_encoding = "latin-1"
+        self._output_file.close() if self._output_file else None
+        self._output_file = open(self.output_file_name,"w",encoding=self._output_encoding)
+        _ = self.process()
+
+  def validate(self,_lines:list[str]):
+    """Validate each _lines"""
+    for idx,line in enumerate(_lines):
+      self._lines_processed += 1
+
+      data = line.split(",",3)
+
+      if len(data) < 3
+        self.errors.append({'line_num': idx + 1, 'error': 'Invalid format'})
+        continue
+
+      name, age, job = data
+
+      is_valid_name = name.replace('.','',1).isdigit()
+      is_valid_age = age.replace('.','',1).isdigit()
+      is_valid_job = job.replace('.','',1).isdigit()
+
+      if is_valid_name:
+        self.errors.append({"line_num": idx + 1, "error": "Invalid name"})
+        continue
+
+      if is_valid_age is False:
+        self.errors.append({"line_num": idx + 1, "error": "Invalid age"})
+        continue
+
+      if is_valid_job:
+        self.errors.append({"line_num": idx + 1, "error": "Invalid job"})
+        continue
+
+      self._valid_lines.append(f"{name},{age},{job}")
 
   def __exit__(self):
     """Clean up - runs even if exception"""
-    self.output_file.close() if self.output_file is not None
-    self.input_file.close() if self.input_file is not None
-    self.temporaryFile.close() if self.temporaryFile is not None
+    self._output_file.close() if self._output_file is not None else None
+    self._input_file.close() if self._input_file is not None else None

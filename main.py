@@ -1,4 +1,4 @@
-from fileProcessor import FileProcessor
+from fileProcessor import FileProcessingError, FileProcessor
 
 
 def process_file(input_path: str, output_path: str):
@@ -21,9 +21,18 @@ def process_file(input_path: str, output_path: str):
     - Disk full (simulate with max lines)
     - Keyboard interrupt (cleanup gracefully)
     """
-    file = FileProcessor(input_path,output_path)
-    file.process()
-    
+    try:
+      file = FileProcessor(input_path,output_path)
+      file.process()
+    except FileProcessingError as e:
+      return {
+        'success': False,
+        'lines_processed': 0,
+        'errors': [],
+        'reason': e
+      }
+      except
+
 
 input_path = "./input.txt"
 output_path = "./output.txt"
