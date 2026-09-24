@@ -1,0 +1,9 @@
+Alice,25,Developer
+Bob,30,Designer
+InvalidLine
+Charlie,22,Student
+David,not_a_number,Engineer
+Eve,28,Backend Developer
+AnotherInvalidLine
+Frank,35,DevOps Engineer
+Grace,27,Data Scientist
