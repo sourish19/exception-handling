@@ -1,4 +1,7 @@
-def process_file(input_path: str, output_path: str) -> dict:
+from fileProcessor import FileProcessor
+
+
+def process_file(input_path: str, output_path: str):
     """
     Returns {
         'success': bool,
@@ -9,7 +12,7 @@ def process_file(input_path: str, output_path: str) -> dict:
         ],
         'reason': str if not success else None
     }
-    
+
     Handle:
     - File not found
     - File encoding issues (try UTF-8, then latin-1, then skip)
@@ -18,4 +21,11 @@ def process_file(input_path: str, output_path: str) -> dict:
     - Disk full (simulate with max lines)
     - Keyboard interrupt (cleanup gracefully)
     """
-    pass
+    file = FileProcessor(input_path,output_path)
+    file.process()
+    
+
+input_path = "./input.txt"
+output_path = "./output.txt"
+
+process_file(input_path,output_path)
