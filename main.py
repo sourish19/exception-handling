@@ -21,20 +21,33 @@ def process_file(input_path: str, output_path: str):
     - Disk full (simulate with max lines)
     - Keyboard interrupt (cleanup gracefully)
     """
+    # with open("latin1.txt", "w", encoding="latin-1") as f:
+    #     f.write("André,25,Developer\n")
+
     try:
-      file = FileProcessor(input_path,output_path)
-      file.process()
+      with FileProcessor(input_path,output_path) as processor:
+        data = processor.process()
+
+        return data
+
     except FileProcessingError as e:
       return {
         'success': False,
         'lines_processed': 0,
-        'errors': [],
+        'errors': None,
         'reason': e
       }
-      except
+    except RuntimeError as e:
+      print("Exception caught")
+      return {
+        'success': False,
+        'lines_processed': 0,
+        'errors': None,
+        'reason': e
+      }
 
 
 input_path = "./input.txt"
 output_path = "./output.txt"
 
-process_file(input_path,output_path)
+print(process_file(input_path,output_path))

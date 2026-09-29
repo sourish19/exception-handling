@@ -1,5 +1,5 @@
-import tempfile
-from io import TextIOWrapper, _WrappedBuffer
+from io import TextIOWrapper
+
 
 class FileProcessingError(Exception):
   pass
@@ -19,16 +19,16 @@ class FileProcessor:
   output_file_name: str
   errors: list[dict[str,str|int]]
   _valid_lines:  list[str]
-  _input_file:None |  TextIOWrapper[_WrappedBuffer]
-  _output_file: None | TextIOWrapper[_WrappedBuffer]
+  _input_file:None |  TextIOWrapper
+  _output_file: None | TextIOWrapper
   _lines: list[str]
   _input_encoding: str
   _output_encoding: str
   _lines_processed: int
 
-  def __init__(self,_input_file:str,_output_file:str):
-    self.input_file_name = _input_file
-    self.output_file_name = _output_file
+  def __init__(self,_input_file_name:str,_output_file_name:str):
+    self.input_file_name = _input_file_name
+    self.output_file_name = _output_file_name
     self._input_file = None
     self._output_file = None
     self._lines = []
@@ -50,6 +50,7 @@ class FileProcessor:
       if self._input_file is None:
         raise FileProcessingError(f"Permission denied for {self.input_file_name}")
       else:
+        self._input_file.close()
         raise FileProcessingError(f"Permission denied for {self.output_file_name}")
 
   def process(self):
@@ -58,10 +59,12 @@ class FileProcessor:
         self._lines = self._input_file.read().splitlines()
 
       if self._lines:
-        self.validate(self._lines)
+        _ = self.validate(self._lines)
 
       if self._output_file:
-        _ = self._output_file.write("\n".join(self._lines))
+        _ = self._output_file.write("\n".join(self._valid_lines))
+
+      # raise RuntimeError("testing clenup")
 
       return {
         'success': True,
@@ -78,7 +81,7 @@ class FileProcessor:
         })
         raise EncodingError("Unable to decode file with supported encodings")
       else:
-        self._input_encoding = "utf-8"
+        self._input_encoding = "latin-1"
         self._input_file.close() if self._input_file else None
         self._input_file = open(self.input_file_name,"r",encoding=self._input_encoding)
         _ = self.process()
@@ -103,12 +106,13 @@ class FileProcessor:
 
       data = line.split(",",3)
 
-      if len(data) < 3
+      if len(data) < 3:
         self.errors.append({'line_num': idx + 1, 'error': 'Invalid format'})
         continue
 
       name, age, job = data
 
+      # Here better to check with regex
       is_valid_name = name.replace('.','',1).isdigit()
       is_valid_age = age.replace('.','',1).isdigit()
       is_valid_job = job.replace('.','',1).isdigit()
@@ -127,7 +131,9 @@ class FileProcessor:
 
       self._valid_lines.append(f"{name},{age},{job}")
 
-  def __exit__(self):
+  def __exit__(self,exc_type, exc_val, exc_tb):
     """Clean up - runs even if exception"""
-    self._output_file.close() if self._output_file is not None else None
-    self._input_file.close() if self._input_file is not None else None
+    self._output_file.close() if self._output_file else None
+    self._input_file.close() if self._input_file  else None
+    # print("Error")
+    return False

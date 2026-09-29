@@ -1,3 +1,5 @@
 assign.md
 __pycache__/
 *.py[cod]
+input.txt
+output.txt
